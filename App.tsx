@@ -1,18 +1,19 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   Bed, 
   CalendarDays, 
   BookOpen, 
-  Database, 
+  Settings, 
   Menu, 
   X, 
   Bell, 
   Search,
   ChevronRight,
   LogOut,
-  User
+  User,
+  Zap
 } from 'lucide-react';
 import { ViewType, Room, Booking, Guest, RoomStatus } from './types';
 import { MOCK_ROOMS, MOCK_BOOKINGS, MOCK_GUESTS } from './constants';
@@ -21,144 +22,155 @@ import RoomsPage from './components/RoomsPage';
 import CalendarPage from './components/CalendarPage';
 import BookingsPage from './components/BookingsPage';
 import SetupPage from './components/SetupPage';
+import Auth from './components/Auth';
 
 const App: React.FC = () => {
+  const [user, setUser] = useState<any>(null);
   const [activeView, setActiveView] = useState<ViewType>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   
-  // Centralized State
-  const [rooms, setRooms] = useState<Room[]>(MOCK_ROOMS);
-  const [bookings, setBookings] = useState<Booking[]>(MOCK_BOOKINGS);
-  const [guests, setGuests] = useState<Guest[]>(MOCK_GUESTS);
+  // App State - Syncing with Database/LocalStorage
+  const [rooms, setRooms] = useState<Room[]>(() => {
+    const saved = localStorage.getItem('hms_rooms');
+    return saved ? JSON.parse(saved) : MOCK_ROOMS;
+  });
+  const [bookings, setBookings] = useState<Booking[]>(() => {
+    const saved = localStorage.getItem('hms_bookings');
+    return saved ? JSON.parse(saved) : MOCK_BOOKINGS;
+  });
+  const [guests, setGuests] = useState<Guest[]>(() => {
+    const saved = localStorage.getItem('hms_guests');
+    return saved ? JSON.parse(saved) : MOCK_GUESTS;
+  });
+
+  // Global Auto-Save Effect
+  useEffect(() => {
+    localStorage.setItem('hms_rooms', JSON.stringify(rooms));
+    localStorage.setItem('hms_bookings', JSON.stringify(bookings));
+    localStorage.setItem('hms_guests', JSON.stringify(guests));
+  }, [rooms, bookings, guests]);
+
+  if (!user) {
+    return <Auth onLogin={setUser} />;
+  }
 
   const NavItem = ({ id, icon: Icon, label }: { id: ViewType, icon: any, label: string }) => (
     <button
       onClick={() => setActiveView(id)}
-      className={`flex items-center w-full px-4 py-3 mb-1 transition-all rounded-lg group ${
+      className={`flex items-center w-full px-4 py-3.5 mb-2 transition-all duration-300 rounded-2xl group ${
         activeView === id 
-          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' 
-          : 'text-slate-500 hover:bg-indigo-50 hover:text-indigo-600'
+          ? 'bg-indigo-600 text-white shadow-[0_10px_20px_-5px_rgba(79,70,229,0.4)]' 
+          : 'text-slate-400 hover:bg-slate-100 hover:text-indigo-600'
       }`}
     >
-      <Icon className={`w-5 h-5 mr-3 transition-colors ${activeView === id ? 'text-white' : 'text-slate-400 group-hover:text-indigo-600'}`} />
-      <span className={`font-medium transition-opacity duration-300 ${!isSidebarOpen && 'lg:opacity-0 lg:w-0'}`}>{label}</span>
-      {activeView === id && isSidebarOpen && <ChevronRight className="w-4 h-4 ml-auto" />}
+      <div className={`p-1.5 rounded-lg mr-3 transition-colors ${activeView === id ? 'bg-white/20' : 'bg-slate-50 group-hover:bg-indigo-100'}`}>
+        <Icon className={`w-5 h-5 ${activeView === id ? 'text-white' : 'text-slate-400 group-hover:text-indigo-600'}`} />
+      </div>
+      <span className={`font-bold text-sm tracking-tight transition-opacity duration-300 ${!isSidebarOpen && 'lg:opacity-0 lg:w-0'}`}>{label}</span>
+      {activeView === id && isSidebarOpen && <ChevronRight className="w-4 h-4 ml-auto animate-pulse" />}
     </button>
   );
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
-      {/* Sidebar */}
+    <div className="flex h-screen bg-[#F8FAFC] overflow-hidden text-slate-900 selection:bg-indigo-100 selection:text-indigo-900">
+      {/* Sidebar - Elevated Design */}
       <aside 
         className={`${
-          isSidebarOpen ? 'w-64' : 'w-20'
-        } fixed inset-y-0 left-0 z-50 flex flex-col transition-all duration-300 bg-white border-r border-slate-200 shadow-xl lg:static`}
+          isSidebarOpen ? 'w-72' : 'w-24'
+        } fixed inset-y-0 left-0 z-50 flex flex-col transition-all duration-500 bg-white border-r border-slate-200/60 lg:static`}
       >
-        <div className="flex items-center justify-between h-20 px-6 border-b border-slate-100">
-          <div className={`flex items-center transition-all duration-300 ${!isSidebarOpen && 'opacity-0 scale-50'}`}>
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center mr-2 shadow-inner">
-              <span className="text-white font-bold text-lg">L</span>
-            </div>
-            <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 truncate">
-              Lumina HMS
-            </h1>
-          </div>
-          {!isSidebarOpen && (
-             <div className="absolute inset-x-0 top-6 flex justify-center">
-               <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg">
-                <span className="text-white font-bold text-lg">L</span>
-              </div>
-             </div>
-          )}
-          <button 
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-1 rounded-md hover:bg-slate-100 text-slate-400"
-          >
-            {isSidebarOpen ? <X className="w-6 h-6 lg:hidden" /> : <Menu className="w-6 h-6 lg:hidden" />}
-            <Menu className="w-6 h-6 hidden lg:block" />
-          </button>
-        </div>
-
-        <nav className="flex-1 px-4 py-6 overflow-y-auto">
-          <NavItem id="dashboard" icon={LayoutDashboard} label="Dashboard" />
-          <NavItem id="rooms" icon={Bed} label="Rooms" />
-          <NavItem id="calendar" icon={CalendarDays} label="Calendar" />
-          <NavItem id="bookings" icon={BookOpen} label="Reservations" />
-          
-          <div className="pt-4 mt-4 border-t border-slate-100">
-            <p className={`px-4 mb-2 text-xs font-semibold text-slate-400 uppercase tracking-wider transition-opacity ${!isSidebarOpen && 'opacity-0'}`}>
-              Advanced
-            </p>
-            <NavItem id="setup" icon={Database} label="System" />
-          </div>
-        </nav>
-
-        <div className="p-4 border-t border-slate-100 bg-slate-50/50">
-          <div className={`flex items-center px-2 py-3 mb-2 rounded-lg bg-white border border-slate-200 shadow-sm ${!isSidebarOpen && 'justify-center'}`}>
-            <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center overflow-hidden flex-shrink-0">
-               <User className="w-6 h-6 text-indigo-600" />
+        <div className="flex items-center h-24 px-8 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200">
+               <Zap className="w-6 h-6 text-white fill-white" />
             </div>
             {isSidebarOpen && (
-              <div className="ml-3 overflow-hidden">
-                <p className="text-sm font-semibold truncate">Receptionist #1</p>
-                <p className="text-xs text-slate-500">Admin access</p>
-              </div>
+              <h1 className="text-xl font-black text-slate-900 tracking-tighter uppercase">
+                Lumina<span className="text-indigo-600">HMS</span>
+              </h1>
             )}
           </div>
-          <button className={`flex items-center w-full px-4 py-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors ${!isSidebarOpen && 'justify-center'}`}>
-            <LogOut className="w-5 h-5 mr-3" />
-            {isSidebarOpen && <span>Logout</span>}
-          </button>
+        </div>
+
+        <nav className="flex-1 px-4 overflow-y-auto scrollbar-hide">
+          <NavItem id="dashboard" icon={LayoutDashboard} label="Control Center" />
+          <NavItem id="rooms" icon={Bed} label="Unit Inventory" />
+          <NavItem id="calendar" icon={CalendarDays} label="Live Timeline" />
+          <NavItem id="bookings" icon={BookOpen} label="Reservations" />
+          
+          <div className="mt-8 px-6 mb-4">
+             <div className={`h-px bg-slate-100 w-full mb-6 ${!isSidebarOpen && 'opacity-0'}`}></div>
+             <p className={`text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] transition-opacity ${!isSidebarOpen && 'opacity-0'}`}>
+               Management
+             </p>
+          </div>
+          <NavItem id="setup" icon={Settings} label="System Config" />
+        </nav>
+
+        {/* User Profile Section */}
+        <div className="p-6 border-t border-slate-100">
+           <div className={`flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100 ${!isSidebarOpen && 'justify-center p-2'}`}>
+              <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold shadow-md shadow-indigo-100 flex-shrink-0">
+                {user.name.charAt(0)}
+              </div>
+              {isSidebarOpen && (
+                <div className="min-w-0">
+                  <p className="text-xs font-bold truncate">{user.name}</p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase truncate">{user.role}</p>
+                </div>
+              )}
+           </div>
+           <button 
+             onClick={() => setUser(null)}
+             className={`flex items-center w-full mt-4 px-4 py-2.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all font-bold text-xs ${!isSidebarOpen && 'justify-center'}`}
+           >
+             <LogOut className="w-4 h-4 mr-3" />
+             {isSidebarOpen && <span>Termninate Session</span>}
+           </button>
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className="flex items-center justify-between h-20 px-8 bg-white border-b border-slate-100">
-          <div className="flex items-center bg-slate-100 rounded-full px-4 py-2 w-full max-w-md">
-            <Search className="w-4 h-4 text-slate-400 mr-2" />
-            <input 
-              type="text" 
-              placeholder="Quick search..." 
-              className="bg-transparent border-none outline-none text-sm w-full"
-            />
+      <main className="flex-1 flex flex-col overflow-hidden relative">
+        {/* Global Loading Bar */}
+        {isLoading && <div className="absolute top-0 left-0 right-0 h-1 bg-indigo-600 animate-pulse z-50"></div>}
+
+        <header className="flex items-center justify-between h-24 px-10 bg-white/70 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-40">
+          <div className="flex items-center gap-6 w-full max-w-xl">
+             <button 
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className="p-2.5 rounded-xl bg-slate-100 text-slate-500 hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+              <div className="relative flex-1">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input 
+                  type="text" 
+                  placeholder="Universal search: rooms, guests, transactions..." 
+                  className="w-full pl-11 pr-4 py-3 bg-slate-50 border-transparent focus:bg-white focus:border-indigo-500/30 rounded-2xl outline-none text-sm transition-all font-medium"
+                />
+              </div>
           </div>
           
-          <div className="flex items-center space-x-4">
-            <button className="relative p-2 rounded-full hover:bg-slate-100 text-slate-500 transition-colors">
+          <div className="flex items-center gap-6">
+            <button className="relative p-3 rounded-2xl bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 transition-all shadow-sm">
               <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+              <span className="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white"></span>
             </button>
-            <div className="h-6 w-px bg-slate-200 mx-2 hidden sm:block"></div>
-            <div className="text-right hidden md:block">
-              <p className="text-sm font-medium text-slate-900">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-              <p className="text-xs text-slate-500">System Online</p>
+            <div className="text-right hidden sm:block">
+              <p className="text-sm font-black text-slate-900">{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+              <p className="text-[10px] text-emerald-500 font-black uppercase tracking-widest">System Operational</p>
             </div>
           </div>
         </header>
 
-        {/* Dynamic View Rendering */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-8">
-          <div className="max-w-7xl mx-auto h-full">
-            {activeView === 'dashboard' && (
-              <Dashboard rooms={rooms} bookings={bookings} guests={guests} />
-            )}
-            {activeView === 'rooms' && (
-              <RoomsPage rooms={rooms} setRooms={setRooms} />
-            )}
-            {activeView === 'calendar' && (
-              <CalendarPage rooms={rooms} bookings={bookings} guests={guests} />
-            )}
-            {activeView === 'bookings' && (
-              <BookingsPage 
-                rooms={rooms} 
-                bookings={bookings} 
-                setBookings={setBookings} 
-                guests={guests} 
-                setGuests={setGuests} 
-              />
-            )}
+        <div className="flex-1 overflow-y-auto p-10 bg-slate-50/50">
+          <div className="max-w-7xl mx-auto space-y-10">
+            {activeView === 'dashboard' && <Dashboard rooms={rooms} bookings={bookings} guests={guests} />}
+            {activeView === 'rooms' && <RoomsPage rooms={rooms} setRooms={setRooms} />}
+            {activeView === 'calendar' && <CalendarPage rooms={rooms} bookings={bookings} guests={guests} />}
+            {activeView === 'bookings' && <BookingsPage rooms={rooms} bookings={bookings} setBookings={setBookings} guests={guests} setGuests={setGuests} />}
             {activeView === 'setup' && <SetupPage />}
           </div>
         </div>

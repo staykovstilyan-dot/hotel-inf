@@ -1,5 +1,8 @@
 {
-  "name": "Lumina Hotel HMS",
-  "description": "A comprehensive Minimum Viable Product for a Hotel Management System featuring a dashboard, room management, visual booking calendar, and guest tracking.",
-  "requestFramePermissions": []
+  "name": "Lumina Pro HMS",
+  "description": "Enterprise-grade Hotel Management System with Supabase integration, real-time analytics, and advanced guest CRM.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
 }
